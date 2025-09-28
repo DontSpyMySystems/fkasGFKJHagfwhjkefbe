@@ -1,0 +1,42 @@
+name: 🔑 Auto-Update HWID
+
+on:
+  repository_dispatch:
+    types: [update-hwid]
+
+jobs:
+  update-hwid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Find and update HWID
+        run: |
+          KEY="${{ github.event.client_payload.key }}"
+          HWID="${{ github.event.client_payload.hwid }}"
+          PLAYER="${{ github.event.client_payload.user }}"
+          
+          echo "🔄 Updating HWID for key: $KEY"
+          echo "📱 HWID: $HWID"
+          echo "👤 Player: $PLAYER"
+          
+          # Update the key file
+          if grep -q "^$KEY:" aber100pro; then
+            echo "✅ Key found, updating HWID..."
+            sed -i "s/^$KEY:.*$/$KEY:$HWID:/" aber100pro
+          else
+            echo "⚠️ Key not found, adding new key..."
+            echo "$KEY:$HWID:" >> aber100pro
+          fi
+          
+          echo "📝 Updated file content:"
+          cat aber100pro
+
+      - name: 💾 Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "🤖 GitHub Action"
+          git add .
+          git commit -m "🔑 Auto-update HWID for ${{ github.event.client_payload.user }}"
+          git push
