@@ -4,12 +4,17 @@ on:
   repository_dispatch:
     types: [update-hwid]
 
+permissions:
+  contents: write
+
 jobs:
   update-hwid:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🔍 Find and update HWID
         run: |
@@ -36,7 +41,7 @@ jobs:
       - name: 💾 Commit and push changes
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "🤖 GitHub Action"
+          git config --local user.name "GitHub Action"
           git add .
-          git commit -m "🔑 Auto-update HWID for ${{ github.event.client_payload.user }}"
+          git diff --staged --quiet || git commit -m "🔑 Auto-update HWID for ${{ github.event.client_payload.user }}"
           git push
