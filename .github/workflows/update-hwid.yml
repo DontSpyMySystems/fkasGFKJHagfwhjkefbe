@@ -1,11 +1,8 @@
-name: 🔑 Auto-Update HWID
+name: 🔑 Auto-Update HWID with Expiration
 
 on:
   repository_dispatch:
     types: [update-hwid]
-
-permissions:
-  contents: write
 
 jobs:
   update-hwid:
@@ -13,35 +10,33 @@ jobs:
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🔍 Find and update HWID
+      - name: 🔍 Update HWID with Expiration
         run: |
           KEY="${{ github.event.client_payload.key }}"
           HWID="${{ github.event.client_payload.hwid }}"
-          PLAYER="${{ github.event.client_payload.user }}"
+          USER="${{ github.event.client_payload.user }}"
+          EXPIRATION="${{ github.event.client_payload.expiration }}"
           
-          echo "🔄 Updating HWID for key: $KEY"
+          echo "🔄 Updating key: $KEY"
           echo "📱 HWID: $HWID"
-          echo "👤 Player: $PLAYER"
+          echo "👤 User: $USER"
+          echo "⏰ Expiration: $EXPIRATION"
           
-          # Update the key file
-          if grep -q "^$KEY:" aber100pro; then
-            echo "✅ Key found, updating HWID..."
-            sed -i "s/^$KEY:.*$/$KEY:$HWID:/" aber100pro
-          else
-            echo "⚠️ Key not found, adding new key..."
-            echo "$KEY:$HWID:" >> aber100pro
-          fi
+          # Create new entry format: Key:HWID:User:Expiration
+          NEW_ENTRY="$KEY:$HWID:$USER:$EXPIRATION"
           
-          echo "📝 Updated file content:"
-          cat aber100pro
+          # Remove old entry if exists and add new one
+          grep -v "^$KEY:" aber100pro > aber100pro.temp || true
+          echo "$NEW_ENTRY" >> aber100pro.temp
+          mv aber100pro.temp aber100pro
+          
+          echo "✅ Updated file with new format"
 
-      - name: 💾 Commit and push changes
+      - name: 💾 Commit changes
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .
-          git diff --staged --quiet || git commit -m "🔑 Auto-update HWID for ${{ github.event.client_payload.user }}"
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add aber100pro
+          git commit -m "🔧 Update ${{ github.event.client_payload.key }} with 6h expiration" || echo "No changes to commit"
           git push
